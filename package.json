@@ -1,0 +1,27 @@
+{
+  "name": "nyxland",
+  "productName": "NyxLand",
+  "version": "1.0.0",
+  "description": "Dynamic Island untuk Windows — notifikasi, reminder, audio mixer, catatan, dan AI Assistant.",
+  "main": "app/.vite/build/main.js",
+  "author": {
+    "name": "Ahmad Faqod Kurnia"
+  },
+  "license": "MIT",
+  "scripts": {
+    "pack": "node scripts/pack.mjs",
+    "verify": "node scripts/verify-nokey.mjs",
+    "release": "npm run pack && npm run verify"
+  },
+  "keywords": [
+    "dynamic-island",
+    "windows",
+    "electron",
+    "notch",
+    "ai-assistant"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<username>/NyxLand.git"
+  }
+}

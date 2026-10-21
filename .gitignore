@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+package-lock.json
+
+# build output
+out/
+dist/
+*.asar
+*.asar.new
+*.asar.bak
+
+# secrets — JANGAN pernah commit
+ai-config.json
+**/ai-config.json
+.env
+.env.*
+*.key
+*.pem
+
+# logs & cache
+*.log
+app-cache.json
+notifications-store.json
+settings.json
+workspaces.json
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

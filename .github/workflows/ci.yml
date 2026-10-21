@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Scan bundle — pastikan tidak ada API key
+        run: node scripts/verify-nokey.mjs
+
+      - name: Pack app.asar
+        run: node scripts/pack.mjs
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-asar
+          path: out/app.asar
+          retention-days: 7

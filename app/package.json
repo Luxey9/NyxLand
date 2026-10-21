@@ -1,0 +1,27 @@
+{
+  "name": "nyxland",
+  "productName": "NyxLand",
+  "version": "1.0.0",
+  "description": "Dynamic Island untuk Windows — dengan AI Assistant, reminder, audio mixer, dan background image.",
+  "main": ".vite/build/main.js",
+  "author": {
+    "name": "Ahmad Faqod Kurnia"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.5.2",
+    "electron-squirrel-startup": "^1.0.1",
+    "framer-motion": "^12.34.0",
+    "lucide-react": "^0.575.0",
+    "node-powershell": "^5.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0"
+  },
+  "allowScripts": {
+    "electron@38.7.2": true,
+    "esbuild@0.21.5": true,
+    "@bitdisaster/exe-icon-extractor@1.0.10": true,
+    "electron-winstaller": true
+  }
+}
