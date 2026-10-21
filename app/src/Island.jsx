@@ -2690,7 +2690,6 @@ export default function Island() {
 
     if (localStorage.getItem('newuser') === 'true') {
       const timer = setTimeout(() => {
-        window.electronAPI?.openExternal ? window.electronAPI.openExternal("quickpill.neosparkx.com") : window.open("quickpill.neosparkx.com", "_blank");
         localStorage.setItem('newuser', 'false');
       }, 3000);
       return () => clearTimeout(timer);

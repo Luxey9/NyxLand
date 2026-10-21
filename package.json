@@ -22,6 +22,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/<username>/NyxLand.git"
+    "url": "https://github.com/Luxey9/NyxLand.git"
+  },
+  "homepage": "https://github.com/Luxey9/NyxLand#readme",
+  "bugs": {
+    "url": "https://github.com/Luxey9/NyxLand/issues"
   }
 }

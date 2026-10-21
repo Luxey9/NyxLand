@@ -58,7 +58,7 @@ Dibangun di atas Electron + React, dengan serangkaian fitur yang tumbuh dari pem
 ### Dari source
 
 ```bash
-git clone https://github.com/<username>/NyxLand.git
+git clone https://github.com/Luxey9/NyxLand.git
 cd NyxLand
 npm install
 npm start

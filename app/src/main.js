@@ -984,11 +984,7 @@ function cleanLegacyStartupEntries() {
 }
 
 // --- Native Auto-Updater Engine ---
-const DEFAULT_MANIFEST_URLS = [
-  "https://raw.githubusercontent.com/nabil24024004/Quick-Pill/main/web%20app/public/version.json",
-  "https://pub-ec47b1fa4cbf4c5ba82408a738fb69d3.r2.dev/version.json",
-  "https://raw.githubusercontent.com/nabil24024004/Ripple/main/web%20app/public/version.json"
-];
+const DEFAULT_MANIFEST_URLS = [];
 
 class AppUpdater extends EventEmitter {
   constructor() {
@@ -1691,7 +1687,7 @@ function updateTrayMenu() {
 }
 
 app.whenReady().then(() => {
-  app.setAppUserModelId("com.neosparkx.quickpill");
+  app.setAppUserModelId("id.nyxland.app");
   cleanLegacyStartupEntries();
   createWindow();
   startKeyLockPolling();
@@ -2892,4 +2888,4 @@ ipcMain.handle('audio-mixer:set-master-mute', async (event, payload = {}) => {
     logToFile('[audio-mixer:set-master-mute error]', err);
     return false;
   }
-});
+});
