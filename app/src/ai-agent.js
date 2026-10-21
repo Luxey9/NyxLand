@@ -8,14 +8,9 @@ const http = require("node:http");
 
 module.exports = function registerAiAgent({ app, ipcMain, shell }) {
   // cari config di beberapa kandidat lokasi (userData beda antar build)
-  const cfCandidates = [
-    path.join(app.getPath("userData"), "ai-config.json"),
-    path.join(os.homedir(), "AppData", "Roaming", "NyxLand", "ai-config.json"),
-    // migrasi dari build lama
-    path.join(os.homedir(), "AppData", "Roaming", "Quick Pill", "ai-config.json"),
-    path.join(os.homedir(), "AppData", "Roaming", "quick-pill", "ai-config.json"),
-    path.join(os.homedir(), "AppData", "Roaming", "nyxland", "ai-config.json"),
-  ];
+  // Hanya userData milik app ini. Tidak ada fallback ke folder build lain:
+  // kalau ada, build portable bisa "mewarisi" API key mesin developer.
+  const cfCandidates = [path.join(app.getPath("userData"), "ai-config.json")];
   let cfg = {};
   let cfgPath = cfCandidates[0];
   for (const cand of cfCandidates) {
