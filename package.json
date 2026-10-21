@@ -11,7 +11,9 @@
   "scripts": {
     "pack": "node scripts/pack.mjs",
     "verify": "node scripts/verify-nokey.mjs",
-    "release": "npm run pack && npm run verify"
+    "release": "npm run pack && npm run verify",
+    "installer:meta": "node build/installer/setmeta.cjs build/appdir/NyxLand.exe build/icon.ico",
+    "installer": "electron-builder --win nsis --prepackaged build/appdir --config build/installer/electron-builder.yml"
   },
   "keywords": [
     "dynamic-island",
@@ -28,7 +30,10 @@
   "bugs": {
     "url": "https://github.com/Luxey9/NyxLand/issues"
   },
-  "dependencies": {
+  "devDependencies": {
     "rcedit": "^4.0.1"
+  },
+  "dependencies": {
+    "electron-builder": "^26.15.3"
   }
 }

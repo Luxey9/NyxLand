@@ -9,6 +9,11 @@ dist/
 *.asar.new
 *.asar.bak
 
+# staging installer (folder app jadi — ratusan MB, jangan masuk repo)
+build/appdir/
+build/*.exe
+build/*.zip
+
 # secrets — JANGAN pernah commit
 ai-config.json
 **/ai-config.json

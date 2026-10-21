@@ -20,15 +20,16 @@ Tidak butuh: makensis manual, Visual Studio, Python, paket `electron` penuh,
 ## Langkah
 
 ```bash
-# 1. folder app jadi -> appdir/
-cp -r <folder-app-jadi> appdir
-rm -f appdir/BACA-INI.txt
+# folder aplikasi Electron yang sudah jadi -> build/appdir/
+cp -r <folder-app-jadi> build/appdir
+rm -f build/appdir/BACA-INI.txt
 
-# 2. metadata + ikon exe (sekali, hasilnya permanen di exe)
-node scripts/setmeta.cjs appdir/NyxLand.exe build/icon.ico
+# metadata + ikon exe (sekali, hasilnya permanen di exe)
+npm run installer:meta
 
-# 3. bungkus
-electron-builder --win nsis --prepackaged appdir
+# bungkus
+npm i --no-audit --no-fund electron-builder@26
+npm run installer
 # -> dist/NyxLand-Setup-<versi>.exe
 ```
 
