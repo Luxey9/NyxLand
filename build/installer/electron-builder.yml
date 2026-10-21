@@ -1,0 +1,32 @@
+appId: id.luxey9.nyxland
+productName: NyxLand
+# wajib saat pakai --prepackaged: electron-builder tidak bisa menebak dari node_modules
+electronVersion: 38.7.2
+copyright: Copyright © 2026 Ahmad Faqod Kurnia
+
+directories:
+  output: dist
+  buildResources: build
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: NyxLand-Setup-${version}.exe
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: NyxLand
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  uninstallDisplayName: NyxLand ${version}
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  artifactName: NyxLand-Setup-${version}.exe

@@ -27,5 +27,8 @@
   "homepage": "https://github.com/Luxey9/NyxLand#readme",
   "bugs": {
     "url": "https://github.com/Luxey9/NyxLand/issues"
+  },
+  "dependencies": {
+    "rcedit": "^4.0.1"
   }
 }
