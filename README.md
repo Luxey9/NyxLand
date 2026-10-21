@@ -8,6 +8,25 @@ Dibangun di atas Electron + React, dengan serangkaian fitur yang tumbuh dari pem
 
 ---
 
+## Download
+
+Nggak perlu Node.js, nggak perlu build. Ambil file, klik, jalan.
+
+| File | Ukuran | Cara pakai |
+|---|---|---|
+| **[NyxLand-Setup-1.0.0.exe](https://github.com/Luxey9/NyxLand/releases/latest)** | 114 MB | Klik → next → next → selesai. Bikin shortcut Start Menu + Desktop, ada uninstaller. |
+| **[NyxLand-1.0.0-portable.zip](https://github.com/Luxey9/NyxLand/releases/latest)** | 161 MB | Extract ke folder mana saja → klik `NyxLand.exe`. Tanpa install, tanpa registry. |
+
+**Persyaratan:** Windows 10/11 64-bit.
+
+Pertama dijalankan Windows bisa menampilkan *"Windows protected your PC"* — belum ada
+sertifikat code signing. Klik **More info → Run anyway**.
+
+Data disimpan di `%APPDATA%\NyxLand`. API key AI diisi sendiri dari dalam app
+(tab AI → ⚙). Build yang kamu download tidak membawa key siapa pun.
+
+---
+
 ## Fitur
 
 ### Island & Notifikasi
