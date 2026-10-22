@@ -1,0 +1,19 @@
+{
+  "version": "1.0.1",
+  "name": "NyxLand v1.0.1",
+  "releaseDate": "2026-10-22T00:00:00Z",
+  "mandatory": false,
+  "changelog": [
+    "Uji auto-update dari repo sendiri",
+    "Perbaikan: API key tidak lagi diwarisi dari build lain",
+    "Background image 'none' tidak lagi membawa path absolut"
+  ],
+  "platforms": {
+    "win32-x64": {
+      "url": "https://github.com/Luxey9/NyxLand/releases/download/v1.0.1/NyxLand-Setup-1.0.1.exe",
+      "sha256": "417a428959944a98028dbecbac03257991b1a5705b5569a0e761b85496377991",
+      "size": 119784517,
+      "installerType": "nsis"
+    }
+  }
+}
