@@ -3,6 +3,14 @@
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/),
 versi mengikuti [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Ditambahkan
+- Tab **Sholat** (hotkey `Alt+Y`): jadwal Subuh/Dzuhur/Ashar/Maghrib/Isya + hitung mundur ke waktu berikutnya
+- Pengingat waktu sholat: banner notch + nada khusus saat masuk waktu, plus opsi pengingat sebelum waktu (5/10/15/20 menit)
+- Sumber jadwal: Aladhan method **Kemenag** untuk Indonesia, MWL di luar Indonesia — ikut lokasi GPS/kota dari tab Cuaca, cache 6 jam
+- Tombol "Pakai lokasi GPS" langsung di tab Sholat
+
 ## [1.0.0] — 2026-10-21
 
 Rilis pertama dengan nama **NyxLand**.
