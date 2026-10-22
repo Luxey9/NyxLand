@@ -3136,68 +3136,62 @@ export default function Island() {
     }
   }, [standbyBorderEnabled, largeStandbyEnabled]);
 
-  // Get Weather
+  // Get Weather - BMKG (Indonesia) lalu open-meteo (global), berbasis koordinat
   useEffect(() => {
     let isCancelled = false;
+
     const getWeather = async () => {
-      const loc = localStorage.getItem("location") || weatherLocation;
-      const unit = localStorage.getItem("weather-unit") || weatherUnit || "f";
-      const q = loc && loc.trim() ? encodeURIComponent(loc.trim()) : "auto:ip";
-
+      let coords = null;
       try {
-        const response = await fetch(
-          `https://api.weatherapi.com/v1/current.json?key=0b18c67c443543e0a6045401250911&q=${q}&aqi=no`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          if (data?.current && !isCancelled) {
-            const key = unit === "c" ? "temp_c" : "temp_f";
-            const tempVal = Math.round(data.current[key]);
-            if (!isNaN(tempVal)) {
-              setWeather({
-                temp: tempVal,
-                status: data.current.condition?.text || "",
-                humidity: data.current.humidity ? `${data.current.humidity}%` : "",
-                wind: data.current.wind_mph ? `${Math.round(data.current.wind_mph)} mph` : ""
-              });
-              return;
-            }
-          }
-        }
-      } catch (e) {
-        console.error("WeatherAPI fetch failed, attempting fallback...", e);
+        const raw = JSON.parse(localStorage.getItem("location-coords") || "null");
+        if (raw && typeof raw.lat === "number") coords = raw;
+      } catch { /* abaikan json rusak */ }
+
+      const cityName = localStorage.getItem("location") || weatherLocation || "";
+      const unit = localStorage.getItem("weather-unit") || weatherUnit || "c";
+      let w = null;
+
+      if (window.electronAPI?.wxBmkg && coords) {
+        try {
+          const r = await window.electronAPI.wxBmkg(coords.lat, coords.lon);
+          if (r?.ok) w = r;
+        } catch { /* lanjut ke fallback */ }
       }
 
-      // Fallback: wttr.in open weather API
-      try {
-        const fallbackQuery = loc && loc.trim() ? encodeURIComponent(loc.trim()) : "";
-        const fallbackRes = await fetch(`https://wttr.in/${fallbackQuery}?format=j1`);
-        if (fallbackRes.ok && !isCancelled) {
-          const data = await fallbackRes.json();
-          const current = data?.current_condition?.[0];
-          if (current) {
-            const rawTemp = unit === "c" ? parseFloat(current.temp_C) : parseFloat(current.temp_F);
-            const tempVal = Math.round(rawTemp);
-            if (!isNaN(tempVal)) {
-              setWeather({
-                temp: tempVal,
-                status: current.weatherDesc?.[0]?.value || "",
-                humidity: current.humidity ? `${current.humidity}%` : "",
-                wind: current.windspeedMiles ? `${current.windspeedMiles} mph` : ""
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Weather fallback fetch failed", err);
+      if (!w && window.electronAPI?.wxMeteo) {
+        try {
+          const r = await window.electronAPI.wxMeteo(
+            coords ? coords.lat : null,
+            coords ? coords.lon : null,
+            cityName
+          );
+          if (r?.ok) w = r;
+        } catch { /* tidak ada data cuaca */ }
       }
+
+      if (!w || isCancelled) return;
+      if (w.source === "bmkg" && w.area) localStorage.setItem("location-area", w.area);
+
+      const tempVal = Math.round(unit === "f" ? (w.tempC * 9) / 5 + 32 : w.tempC);
+      if (isNaN(tempVal)) return;
+
+      setWeather({
+        temp: tempVal,
+        status: w.desc || "",
+        humidity: w.humidity != null ? `${w.humidity}%` : "",
+        wind: w.windKmh != null ? `${Math.round(w.windKmh)} km/h` : "",
+        source: w.source || "",
+      });
     };
 
+    const onLocationChanged = () => { getWeather(); };
+    window.addEventListener("qp-location-changed", onLocationChanged);
     getWeather();
     const interval = setInterval(getWeather, 600000); // 10 mins
     return () => {
       isCancelled = true;
       clearInterval(interval);
+      window.removeEventListener("qp-location-changed", onLocationChanged);
     };
   }, [weatherLocation, weatherUnit]);
 
@@ -8707,16 +8701,50 @@ export default function Island() {
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                             <span style={{ fontSize: 12, fontWeight: 500, color: textColor }}>Location</span>
-                            <input
-                              className="select-input"
-                              style={{ width: 140, padding: '3px 8px', fontSize: 11, background: 'rgba(255,255,255,0.08)', borderRadius: 6, color: textColor, border: '1px solid rgba(255,255,255,0.12)' }}
-                              placeholder="City, ST, Country"
-                              value={weatherLocation}
-                              onChange={(e) => {
-                                setWeatherLocation(e.target.value);
-                                localStorage.setItem("location", e.target.value);
-                              }}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                className="select-input"
+                                style={{ width: 140, padding: '3px 8px', fontSize: 11, background: 'rgba(255,255,255,0.08)', borderRadius: 6, color: textColor, border: '1px solid rgba(255,255,255,0.12)' }}
+                                placeholder="City, ST, Country"
+                                value={weatherLocation}
+                                onChange={(e) => {
+                                  setWeatherLocation(e.target.value);
+                                  localStorage.setItem("location", e.target.value);
+                                }}
+                              />
+                              <button
+                                type="button"
+                                title="Pakai lokasi GPS saat ini"
+                                id="qp-loc-btn"
+                                onClick={async (e) => {
+                                  const btn = e.currentTarget;
+                                  if (btn.disabled) return;
+                                  btn.disabled = true;
+                                  btn.textContent = "...";
+                                  try {
+                                    const pos = await window.electronAPI.locateCity();
+                                    if (!pos?.ok) throw new Error(pos?.error || "gagal ambil lokasi");
+                                    const rev = await window.electronAPI.reverseCity(pos.lat, pos.lon);
+                                    if (!rev?.ok) throw new Error(rev?.error || "kota tidak terdeteksi");
+                                    setWeatherLocation(rev.label);
+                                    localStorage.setItem("location", rev.label);
+                                    localStorage.setItem("location-source", "gps");
+                                    localStorage.setItem("location-coords", JSON.stringify({ lat: pos.lat, lon: pos.lon, accuracy: pos.accuracy }));
+                                    window.dispatchEvent(new CustomEvent("qp-location-changed", { detail: rev }));
+                                    btn.textContent = "\u2713";
+                                    setTimeout(() => { btn.textContent = "\u{1F4CD}"; btn.disabled = false; }, 1800);
+                                  } catch (err) {
+                                    btn.textContent = "\u2717";
+                                    btn.disabled = false;
+                                    setTimeout(() => { btn.textContent = "\u{1F4CD}"; }, 1800);
+                                    console.error("[NyxLand] lokasi gagal:", err?.message || err);
+                                  }
+                                }}
+                                style={{ width: 26, height: 24, flexShrink: 0, borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.08)', color: textColor, fontSize: 12, lineHeight: 1, cursor: 'pointer', padding: 0 }}
+                              >
+                                \u{1F4CD}
+                              </button>
+                            </div>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px' }}>
                             <span style={{ fontSize: 12, fontWeight: 500, color: textColor }}>Temperature Unit</span>
