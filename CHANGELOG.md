@@ -10,6 +10,7 @@ versi mengikuti [Semantic Versioning](https://semver.org/).
 - Pengingat waktu sholat: banner notch + nada khusus saat masuk waktu, plus opsi pengingat sebelum waktu (5/10/15/20 menit)
 - Sumber jadwal: Aladhan method **Kemenag** untuk Indonesia, MWL di luar Indonesia — ikut lokasi GPS/kota dari tab Cuaca, cache 6 jam
 - Tombol "Pakai lokasi GPS" langsung di tab Sholat
+- Notifikasi dari app sendiri (Sholat & pengingat tugas) pakai **ikon aplikasi** (rounded-square), bukan lagi lingkaran inisial
 
 ## [1.0.0] — 2026-10-21
 

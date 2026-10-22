@@ -4,6 +4,7 @@
  * Butuh: m (react), o (jsx-runtime) di scope modul bundle,
  * plus blok injeksi lawas: __QP_NOTIFY__, __QP_NOTIF_CLOSE__, __QP_ROOT__.
  * IPC: salah:times (main process) — di-bridge lewat preload `salahTimes`.
+ * Ikon app utk notifikasi: window.__QP_APPICON__ -> src/assets/icons/icon.png.
  */
 /* ===== NyxLand — Pengingat Waktu Sholat (injected block) =====
    Dipasang di akhir bundle renderer (.vite/renderer/main_window/assets/index-*.js).
@@ -23,6 +24,9 @@
   function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60 }
   function toMin(t) { var mm = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return mm ? (parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10)) : -1 }
   function log(msg) { try { if (window.electronAPI && window.electronAPI.logMessage) window.electronAPI.logMessage("info", "SALAH " + msg) } catch (e) { } }
+
+  // Ikon aplikasi (src/assets/icons/icon.png di dalam asar) — dipakai notif dari app sendiri
+  try { window.__QP_APPICON__ = new URL("../../../src/assets/icons/icon.png", document.baseURI).href } catch (e) { window.__QP_APPICON__ = "" }
 
   function readCfg() {
     return {
@@ -108,7 +112,7 @@
     if (cfg.sound) { try { window.__QP_SALAH_BEEP__(kind) } catch (e) { } }
     try {
       if (window.__QP_NOTIFY__) {
-        window.__QP_NOTIFY__({ id: "qp-salah-" + key + "-" + Date.now(), appName: "Sholat", title: title, body: body, priority: "high" });
+        window.__QP_NOTIFY__({ id: "qp-salah-" + key + "-" + Date.now(), appName: "Sholat", icon: window.__QP_APPICON__ || void 0, iconShape: "app", title: title, body: body, priority: "high" });
         if (window.__QP_NOTIF_CLOSE__) {
           if (window.__QP_NOTCH_TIMER__) clearTimeout(window.__QP_NOTCH_TIMER__);
           window.__QP_NOTCH_TIMER__ = setTimeout(function () { try { window.__QP_NOTIF_CLOSE__() } catch (e) { } }, 12000);
