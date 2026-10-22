@@ -428,6 +428,7 @@ $MediaKey::keybd_event(${n}, 0, 0, [UIntPtr]::Zero)
 $MediaKey::keybd_event(${n}, 0, 2, [UIntPtr]::Zero)
 `,o=K(r);return I(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${o}`,c=>{c&&a("Volume control error:",c)}),!0}return!1});let ee=null,te=null;function Je(){if(process.platform!=="win32")return;let e=!1;setInterval(()=>{!s||s.isDestroyed()||e||(e=!0,I('powershell -NoProfile -Command "[Console]::CapsLock; [Console]::NumberLock"',(t,n)=>{var d,f;if(e=!1,t||!n)return;const r=n.trim().split(/\r?\n/),o=((d=r[0])==null?void 0:d.trim().toLowerCase())==="true",c=((f=r[1])==null?void 0:f.trim().toLowerCase())==="true";ee!==null&&o!==ee&&s&&!s.isDestroyed()&&s.webContents.send("key-lock-change",{key:"CapsLock",state:o}),te!==null&&c!==te&&s&&!s.isDestroyed()&&s.webContents.send("key-lock-change",{key:"NumLock",state:c}),ee=o,te=c}))},2e3)}let V=null;function He(){if(process.platform!=="win32")return;let e=!1;setInterval(()=>{!s||s.isDestroyed()||e||(e=!0,I("wmic logicaldisk where drivetype=2 get name,volumename /format:csv",(t,n)=>{var c,d;if(e=!1,t)return;const r=new Map,o=n.trim().split(/\r?\n/).filter(f=>f.trim()&&!f.startsWith("Node"));for(const f of o){const l=f.trim().split(",");if(l.length>=3){const u=(c=l[1])==null?void 0:c.trim(),m=((d=l[2])==null?void 0:d.trim())||"USB Drive";u&&r.set(u,m)}}if(V!==null&&s&&!s.isDestroyed()){for(const[f,l]of r)V.has(f)||s.webContents.send("usb-change",{action:"connected",drive:f,name:l});for(const[f]of V)r.has(f)||s.webContents.send("usb-change",{action:"disconnected",drive:f,name:"USB Drive"})}V=r}))},5e3)}const Se=y.join(p.getPath("userData"),"get-notifications.ps1"),Ke=`[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
+try { Add-Type -AssemblyName System.Drawing } catch {}
 
 [void][Windows.UI.Notifications.Management.UserNotificationListener, Windows.UI.Notifications, ContentType = WindowsRuntime]
 [void][Windows.UI.Notifications.UserNotification, Windows.UI.Notifications, ContentType = WindowsRuntime]
@@ -445,29 +446,108 @@ function Await-Op($asyncOp, $type) {
     } catch { return $null }
 }
 
+function Get-IconDataUrl($bytes) {
+    if (-not $bytes -or $bytes.Length -lt 8) { return "" }
+    $mime = "image/png"
+    if ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xD8) { $mime = "image/jpeg" }
+    elseif ($bytes[0] -eq 0x47 -and $bytes[1] -eq 0x49 -and $bytes[2] -eq 0x46) { $mime = "image/gif" }
+    return "data:$mime;base64," + [Convert]::ToBase64String($bytes)
+}
+
+$script:__iconCache = @{}
+
+function Get-AppxLogoBase64($pfn) {
+    try {
+        $pkg = Get-AppxPackage | Where-Object { $_.PackageFamilyName -eq $pfn } | Select-Object -First 1
+        if (-not $pkg) { return "" }
+        $man = Get-AppxPackageManifest $pkg
+        foreach ($app in @($man.Package.Applications.Application)) {
+            $ve = $app.VisualElements
+            if (-not $ve) { continue }
+            foreach ($rel in @($ve.Square44x44Logo, $ve.Square150x150Logo, $ve.Logo)) {
+                if (-not $rel) { continue }
+                $full = Join-Path $pkg.InstallLocation $rel
+                if (Test-Path $full) {
+                    try { $b = [System.IO.File]::ReadAllBytes($full); $u = Get-IconDataUrl $b; if ($u) { return $u } } catch {}
+                }
+                $dir = Split-Path $full -Parent
+                $leaf = [System.IO.Path]::GetFileNameWithoutExtension($rel)
+                $ext = [System.IO.Path]::GetExtension($rel)
+                if ($ext -and (Test-Path $dir)) {
+                    $cands = Get-ChildItem -Path $dir -Filter ($leaf + "*" + $ext) -ErrorAction SilentlyContinue
+                    $pref = @('scale-200', 'scale-100', 'targetsize-256', 'targetsize-48', 'targetsize-44')
+                    foreach ($pfx in $pref) {
+                        $hit = $cands | Where-Object { $_.Name -like "*$pfx*" } | Select-Object -First 1
+                        if ($hit) {
+                            try { $b = [System.IO.File]::ReadAllBytes($hit.FullName); $u = Get-IconDataUrl $b; if ($u) { return $u } } catch {}
+                        }
+                    }
+                    foreach ($c in ($cands | Select-Object -First 3)) {
+                        try { $b = [System.IO.File]::ReadAllBytes($c.FullName); $u = Get-IconDataUrl $b; if ($u) { return $u } } catch {}
+                    }
+                }
+            }
+        }
+        return ""
+    } catch { return "" }
+}
+
+function Get-AppProc($appId) {
+    try {
+        $s = [string]$appId
+        if ($s.Contains('!')) { $s = $s.Split('!')[0] }
+        $s = [regex]::Replace($s, '_[a-z0-9]{8,}$', '')
+        $hints = @()
+        foreach ($seg in $s.Split('.')) { if ($seg.Length -ge 4) { $hints += $seg } }
+        $skip = '^(windows|microsoft|system|application|inc|corp|google|com)$'
+        foreach ($h in $hints) {
+            $hn = ($h -replace '[^a-zA-Z0-9]', '')
+            if ($hn.Length -lt 4) { continue }
+            if ($hn.ToLower() -match $skip) { continue }
+            $proc = Get-Process | Where-Object {
+                try {
+                    $pn = ($_.ProcessName -replace '[^a-zA-Z0-9]', '')
+                    if ($pn.Length -lt 3) { return $false }
+                    if ($pn -eq $hn -or $pn -like "*$hn*" -or $hn -like "*$pn*") { return $true }
+                    if ($pn.Length -ge 6 -and $hn.Length -ge 6 -and $pn.Substring(0, 6).ToLower() -eq $hn.Substring(0, 6).ToLower()) { return $true }
+                    if ($hn.Length -ge 6 -and $_.MainModule -and $_.MainModule.FileName -and $_.MainModule.FileName -like "*$hn*") { return $true }
+                } catch {}
+                return $false
+            } | Select-Object -First 1
+            if ($proc) { return $proc }
+        }
+        return $null
+    } catch { return $null }
+}
+
 function Get-AppIconBase64($appId) {
     try {
-        $proc = $null
-        if ($appId) {
-            # Try to derive process name from AppId (e.g. "com.squirrel.Spotify.Spotify" -> "Spotify")
-            $cleanName = $appId.Split('!')[-1].Split('.')[-1].Replace('.exe','')
-            $proc = Get-Process | Where-Object { $_.ProcessName -eq $cleanName -or $_.ProcessName -like "*$cleanName*" } | Select-Object -First 1
+        if (-not $appId) { return "" }
+        if ($script:__iconCache.ContainsKey($appId)) { return $script:__iconCache[$appId] }
+        $result = ""
+        if ([string]$appId -like "*!*") {
+            $result = Get-AppxLogoBase64 ([string]$appId).Split('!')[0]
         }
-        if (-not $proc) { return "" }
-        $exePath = $proc.MainModule.FileName
-        if (-not $exePath) { return "" }
-        $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($exePath)
-        if (-not $icon) { return "" }
-        $bmp = $icon.ToBitmap()
-        $ms = New-Object System.IO.MemoryStream
-        $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-        $bytes = $ms.ToArray()
-        $ms.Close(); $bmp.Dispose(); $icon.Dispose()
-        if ($bytes.Length -gt 0) {
-            return "data:image/png;base64," + [Convert]::ToBase64String($bytes)
+        if (-not $result) {
+            $proc = Get-AppProc $appId
+            if ($proc) {
+                $exePath = $proc.MainModule.FileName
+                if ($exePath) {
+                    $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($exePath)
+                    if ($icon) {
+                        $bmp = $icon.ToBitmap()
+                        $ms = New-Object System.IO.MemoryStream
+                        $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+                        $bytes = $ms.ToArray()
+                        $ms.Close(); $bmp.Dispose(); $icon.Dispose()
+                        $result = Get-IconDataUrl $bytes
+                    }
+                }
+            }
         }
-    } catch {}
-    return ""
+        $script:__iconCache[$appId] = $result
+        return $result
+    } catch { return "" }
 }
 
 try {
@@ -557,7 +637,7 @@ $type = '[DllImport("user32.dll")] public static extern bool SetForegroundWindow
 $fw = Add-Type -MemberDefinition $type -Name "FW" -Namespace "WinAPI" -PassThru
 $procs = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.ProcessName -match '${n}' -or $_.MainWindowTitle -match '${n}') } | Select-Object -First 1
 if ($procs) { [void]$fw::SetForegroundWindow($procs.MainWindowHandle); Write-Output "true" } else { Write-Output "false" }
-`,o=K(r);I(`powershell -NoProfile -EncodedCommand ${o}`,(c,d)=>{t((d==null?void 0:d.trim())==="true")})})}const w=Ne({savePersistence:Qe,initialPersistedData:ze(),removeNotificationSource:Ze,focusApp:ve,openExternal:async e=>L.openExternal(e)});w.registry.on("change",e=>{s&&!s.isDestroyed()&&s.webContents.send("notification:update",e)});setInterval(()=>{try{w.registry.checkSnoozedDue()}catch{}},1e4);let ne=!1;async function Te(){return process.platform!=="win32"?[]:ne?[]:(ne=!0,new Promise(e=>{B("powershell",["-NoProfile","-ExecutionPolicy","Bypass","-File",Se],{maxBuffer:5*1024*1024,encoding:"utf8",timeout:1e4},(t,n)=>{if(ne=!1,t||!n)return e([]);try{const r=JSON.parse(n.trim()),o=Array.isArray(r)?r:r?[r]:[];w.syncNotifications(o,"windows-notification-listener"),e(o)}catch{e([])}})}))}i.handle("get-notifications",async()=>await Te());i.handle("dismiss-notification",async(e,t)=>{const n=await w.dismiss(t);return!!(n!=null&&n.success)});i.handle("focus-notification-app",async(e,t)=>await ve(t));i.handle("notification:get-snapshot",()=>w.getSnapshot());i.handle("notification:sync-now",async()=>(await Te(),w.getSnapshot()));i.handle("notification:execute-action",async(e,t,n,r)=>await w.executeAction(t,n,r));i.handle("notification:snooze",(e,t,n,r)=>w.snooze(t,n,r));i.handle("notification:cancel-snooze",(e,t)=>w.cancelSnooze(t));i.handle("notification:dismiss",async(e,t)=>await w.dismiss(t));i.handle("notification:dismiss-group",(e,t)=>w.dismissGroup(t));i.handle("notification:clear-all",async()=>{try{await Xe()}catch{}return w.clearAllActive()});i.handle("notification:undo-dismiss",(e,t)=>w.undoDismiss(t));i.handle("notification:mark-reviewed",(e,t)=>w.markReviewed(t));i.handle("notification:mark-all-reviewed",()=>w.markAllReviewed());i.handle("notification:set-hide-previews",(e,t)=>(w.setHidePreviews(t),!0));i.handle("notification:set-app-excluded",(e,t,n)=>(w.setAppExcluded(t,n),!0));i.handle("notification:clear-history",()=>(w.clearHistory(),!0));function Ye(){const e=[y.join(process.resourcesPath,"audio-helper.exe"),y.join(process.resourcesPath,"native","bin","audio-helper.exe"),y.join(process.resourcesPath,"native","audio-helper.exe"),y.join(p.getAppPath(),"native","bin","audio-helper.exe"),y.join(__dirname,"..","native","bin","audio-helper.exe"),y.join(__dirname,"native","bin","audio-helper.exe"),y.join(process.cwd(),"native","bin","audio-helper.exe")];for(const t of e)try{if(h.existsSync(t))return t}catch{}return null}class et{constructor(){this.child=null,this.reqId=0,this.pending=new Map,this.buffer="",this.isStopping=!1,this.restartAttempts=0,this.maxRestartAttempts=5,this.restartTimer=null}start(){if(process.platform!=="win32"||this.child&&!this.child.killed)return;const t=Ye();if(!t){a("[AudioMixer] audio-helper.exe not found in search paths.");return}try{this.child=ye(t,[],{stdio:["pipe","pipe","pipe"],windowsHide:!0}),this.child.stdout.on("data",n=>{this.buffer+=n.toString("utf8");let r;for(;(r=this.buffer.indexOf(`
+`,o=K(r);I(`powershell -NoProfile -EncodedCommand ${o}`,(c,d)=>{t((d==null?void 0:d.trim())==="true")})})}const w=Ne({savePersistence:Qe,initialPersistedData:ze(),removeNotificationSource:Ze,focusApp:ve,openExternal:async e=>L.openExternal(e)});w.registry.on("change",e=>{s&&!s.isDestroyed()&&s.webContents.send("notification:update",e)});setInterval(()=>{try{w.registry.checkSnoozedDue()}catch{}},1e4);const __niPath=y.join(p.getPath("userData"),"notifications-icon-cache.json");let __niCache={};try{__niCache=JSON.parse(h.readFileSync(__niPath,"utf8"))||{}}catch{__niCache={}}let __niDirty=!1;function __niFill(list){try{for(const it of list||[]){if(!it||typeof it!=="object")continue;const id=it.AppId||it.applicationId;if(!id)continue;const ic=it.Icon||it.applicationIcon||"";if(ic){if(__niCache[id]!==ic){__niCache[id]=ic;__niDirty=!0}}else{const c=__niCache[id];if(c)it.Icon=c}}if(__niDirty){h.writeFileSync(__niPath,JSON.stringify(__niCache),"utf8");__niDirty=!1}}catch(e){}}let ne=!1;async function Te(){return process.platform!=="win32"?[]:ne?[]:(ne=!0,new Promise(e=>{B("powershell",["-NoProfile","-ExecutionPolicy","Bypass","-File",Se],{maxBuffer:5*1024*1024,encoding:"utf8",timeout:1e4},(t,n)=>{if(ne=!1,t||!n)return e([]);try{const r=JSON.parse(n.trim()),o=Array.isArray(r)?r:r?[r]:[];__niFill(o);w.syncNotifications(o,"windows-notification-listener"),e(o)}catch{e([])}})}))}i.handle("get-notifications",async()=>await Te());i.handle("dismiss-notification",async(e,t)=>{const n=await w.dismiss(t);return!!(n!=null&&n.success)});i.handle("focus-notification-app",async(e,t)=>await ve(t));i.handle("notification:get-snapshot",()=>w.getSnapshot());i.handle("notification:sync-now",async()=>(await Te(),w.getSnapshot()));i.handle("notification:execute-action",async(e,t,n,r)=>await w.executeAction(t,n,r));i.handle("notification:snooze",(e,t,n,r)=>w.snooze(t,n,r));i.handle("notification:cancel-snooze",(e,t)=>w.cancelSnooze(t));i.handle("notification:dismiss",async(e,t)=>await w.dismiss(t));i.handle("notification:dismiss-group",(e,t)=>w.dismissGroup(t));i.handle("notification:clear-all",async()=>{try{await Xe()}catch{}return w.clearAllActive()});i.handle("notification:undo-dismiss",(e,t)=>w.undoDismiss(t));i.handle("notification:mark-reviewed",(e,t)=>w.markReviewed(t));i.handle("notification:mark-all-reviewed",()=>w.markAllReviewed());i.handle("notification:set-hide-previews",(e,t)=>(w.setHidePreviews(t),!0));i.handle("notification:set-app-excluded",(e,t,n)=>(w.setAppExcluded(t,n),!0));i.handle("notification:clear-history",()=>(w.clearHistory(),!0));function Ye(){const e=[y.join(process.resourcesPath,"audio-helper.exe"),y.join(process.resourcesPath,"native","bin","audio-helper.exe"),y.join(process.resourcesPath,"native","audio-helper.exe"),y.join(p.getAppPath(),"native","bin","audio-helper.exe"),y.join(__dirname,"..","native","bin","audio-helper.exe"),y.join(__dirname,"native","bin","audio-helper.exe"),y.join(process.cwd(),"native","bin","audio-helper.exe")];for(const t of e)try{if(h.existsSync(t))return t}catch{}return null}class et{constructor(){this.child=null,this.reqId=0,this.pending=new Map,this.buffer="",this.isStopping=!1,this.restartAttempts=0,this.maxRestartAttempts=5,this.restartTimer=null}start(){if(process.platform!=="win32"||this.child&&!this.child.killed)return;const t=Ye();if(!t){a("[AudioMixer] audio-helper.exe not found in search paths.");return}try{this.child=ye(t,[],{stdio:["pipe","pipe","pipe"],windowsHide:!0}),this.child.stdout.on("data",n=>{this.buffer+=n.toString("utf8");let r;for(;(r=this.buffer.indexOf(`
 `))!==-1;){const o=this.buffer.slice(0,r).trim();this.buffer=this.buffer.slice(r+1),o&&this.handleLine(o)}}),this.child.stderr.on("data",n=>{a(`[AudioMixer stderr] ${n.toString("utf8").trim()}`)}),this.child.on("error",n=>{a("[AudioMixer process error]",n)}),this.child.on("close",n=>{a(`[AudioMixer] Process exited with code ${n}`),this.child=null;for(const[r,o]of this.pending.entries())clearTimeout(o.timer),o.reject(new Error("Audio helper process exited"));if(this.pending.clear(),!this.isStopping&&this.restartAttempts<this.maxRestartAttempts){this.restartAttempts++;const r=Math.min(1e3*Math.pow(2,this.restartAttempts),1e4);this.restartTimer=setTimeout(()=>{a(`[AudioMixer] Restarting audio-helper (attempt ${this.restartAttempts})...`),this.start()},r)}}),a(`[AudioMixer] Successfully spawned audio-helper from ${t}`),this.restartAttempts=0}catch(n){a("[AudioMixer] Failed to spawn audio-helper:",n)}}handleLine(t){try{const n=JSON.parse(t);if(typeof n.id=="number"&&this.pending.has(n.id)){const{resolve:r,reject:o,timer:c}=this.pending.get(n.id);clearTimeout(c),this.pending.delete(n.id),n.success?r(n.data):o(new Error(n.error||"Unknown audio helper error"))}}catch(n){a(`[AudioMixer] Failed to parse stdout line: ${t}`,n)}}send(t,n={},r=5e3){return new Promise((o,c)=>{if((!this.child||!this.child.stdin||this.child.killed)&&(this.start(),!this.child||!this.child.stdin))return c(new Error("Audio helper is not running"));const d=++this.reqId,f={id:d,cmd:t,...n},l=setTimeout(()=>{this.pending.has(d)&&(this.pending.delete(d),c(new Error(`Command '${t}' timed out after ${r}ms`)))},r);this.pending.set(d,{resolve:o,reject:c,timer:l});try{this.child.stdin.write(JSON.stringify(f)+`
 `)}catch(u){clearTimeout(l),this.pending.delete(d),c(u)}})}stop(){if(this.isStopping=!0,this.restartTimer&&(clearTimeout(this.restartTimer),this.restartTimer=null),this.child){try{this.child.stdin.write(JSON.stringify({id:0,cmd:"shutdown"})+`
 `)}catch{}setTimeout(()=>{if(this.child){try{this.child.kill()}catch{}this.child=null}},400)}}}const x=new et;p.whenReady().then(()=>{x.start()});p.on("will-quit",()=>{x.stop();try{J.unregisterAll()}catch{}if(W)try{W.destroy()}catch{}});p.on("before-quit",()=>{x.stop();try{J.unregisterAll()}catch{}if(W)try{W.destroy()}catch{}});i.handle("audio-mixer:get-devices",async()=>{if(process.platform!=="win32")return{devices:[],defaultDeviceId:""};try{return await x.send("listDevices")}catch(e){return a("[audio-mixer:get-devices error]",e),{devices:[],defaultDeviceId:"",error:e.message}}});i.handle("audio-mixer:get-sessions",async(e,t)=>{if(process.platform!=="win32")return{sessions:[]};try{return await x.send("listSessions",{deviceId:t})}catch(n){return a("[audio-mixer:get-sessions error]",n),{sessions:[],error:n.message}}});i.handle("audio-mixer:set-volume",async(e,t={})=>{if(process.platform!=="win32")return!1;try{return await x.send("setSessionVolume",t)}catch(n){return a("[audio-mixer:set-volume error]",n),!1}});i.handle("audio-mixer:set-mute",async(e,t={})=>{if(process.platform!=="win32")return!1;try{return await x.send("setSessionMute",t)}catch(n){return a("[audio-mixer:set-mute error]",n),!1}});i.handle("audio-mixer:set-master-volume",async(e,t={})=>{if(process.platform!=="win32")return!1;try{return await x.send("setMasterVolume",t)}catch(n){return a("[audio-mixer:set-master-volume error]",n),!1}});i.handle("audio-mixer:set-master-mute",async(e,t={})=>{if(process.platform!=="win32")return!1;try{return await x.send("setMasterMute",t)}catch(n){return a("[audio-mixer:set-master-mute error]",n),!1}});

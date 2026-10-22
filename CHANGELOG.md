@@ -12,6 +12,10 @@ versi mengikuti [Semantic Versioning](https://semver.org/).
 - Tombol "Pakai lokasi GPS" langsung di tab Sholat
 - Notifikasi dari app sendiri (Sholat & pengingat tugas) pakai **ikon aplikasi** (rounded-square), bukan lagi lingkaran inisial
 
+### Diperbaiki
+- **Ikon notifikasi sistem akhirnya terisi** (WhatsApp, Chrome, Snipping Tool, Hermes, dll): ekstraksi 3 lapis — logo paket MSIX (dibaca dari manifest Appx) → proses yang cocok (cocok-nama pintar + path paket) → `ExtractAssociatedIcon` dari exe. Sebelumnya semua notifikasi jatuh ke ikon generik karena AppUserModelID gaya `…!App` ditebak jadi proses bernama "App".
+- Cache ikon persisten (`notifications-icon-cache.json`) — ikon tetap muncul walau appnya sudah ditutup
+
 ## [1.0.0] — 2026-10-21
 
 Rilis pertama dengan nama **NyxLand**.
