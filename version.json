@@ -1,14 +1,10 @@
 {
-  "version": "1.0.2",
-  "name": "NyxLand v1.0.2",
+  "version": "1.0.3",
+  "name": "NyxLand v1.0.3 (uji unduh)",
   "releaseDate": "2026-10-22T12:00:00Z",
   "mandatory": false,
   "changelog": [
-    "Cuaca sekarang pakai lokasi GPS sendiri (Windows Location API)",
-    "Sumber cuaca BMKG untuk Indonesia, open-meteo untuk luar negeri",
-    "Tombol lokasi GPS di Settings > Weather",
-    "Cuaca langsung refresh setelah lokasi diambil",
-    "Buang API key pihak ketiga yang menempel di kode"
+    "uji pipeline auto-update"
   ],
   "platforms": {
     "win32-x64": {
