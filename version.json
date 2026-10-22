@@ -1,20 +1,18 @@
 {
-  "version": "1.0.2",
-  "name": "NyxLand v1.0.2",
-  "releaseDate": "2026-10-22T12:00:00Z",
+  "version": "1.0.3",
+  "name": "NyxLand v1.0.3",
+  "releaseDate": "2026-10-22T13:00:00Z",
   "mandatory": false,
   "changelog": [
-    "Cuaca sekarang pakai lokasi GPS sendiri (Windows Location API)",
-    "Sumber cuaca BMKG untuk Indonesia, open-meteo untuk luar negeri",
-    "Tombol lokasi GPS di Settings > Weather",
-    "Cuaca langsung refresh setelah lokasi diambil",
-    "Buang API key pihak ketiga yang menempel di kode"
+    "Prakiraan 3 hari sekarang data asli BMKG (sebelumnya angka karangan)",
+    "Angka Presipitasi dari data nyata, bukan 2 mm tetap",
+    "Kartu harian tampilkan tanggal + suhu tertinggi/terendah"
   ],
   "platforms": {
     "win32-x64": {
-      "url": "https://github.com/Luxey9/NyxLand/releases/download/v1.0.2/NyxLand-Setup-1.0.2.exe",
-      "sha256": "eff0720f501de441dd28a1088603d4948d91e4a11a3a821a4344069913918914",
-      "size": 119788392,
+      "url": "https://github.com/Luxey9/NyxLand/releases/download/v1.0.3/NyxLand-Setup-1.0.3.exe",
+      "sha256": "553de0e6f356faf7532fa98655fbe117269b3e03c9b6c0884260e9f57c3b9ca8",
+      "size": 119789177,
       "installerType": "nsis"
     }
   }
