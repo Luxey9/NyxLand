@@ -1685,7 +1685,7 @@ export default function Island() {
     localStorage.getItem("show-info-when-idle") !== "false"
   );
   const [hourFormat, setHourFormat] = useState((localStorage.getItem("hour-format") || "12-hr") === "12-hr");
-  const [weather, setWeather] = useState({ temp: "", status: "", humidity: "", wind: "" });
+  const [weather, setWeather] = useState({ temp: "", status: "", humidity: "", wind: "", precipMm: null, daily: [] });
   const [weatherUnit, setweatherUnit] = useState(localStorage.getItem("weather-unit") || "c");
   const [theme, setTheme] = useState("default");
   const [bgColor, setBgColor] = useState(localStorage.getItem("bg-color") || "#000000");
@@ -3180,6 +3180,8 @@ export default function Island() {
         status: w.desc || "",
         humidity: w.humidity != null ? `${w.humidity}%` : "",
         wind: w.windKmh != null ? `${Math.round(w.windKmh)} km/h` : "",
+        precipMm: typeof w.precipMm === "number" ? w.precipMm : null,
+        daily: Array.isArray(w.daily) ? w.daily : [],
         source: w.source || "",
       });
     };
@@ -4955,7 +4957,9 @@ export default function Island() {
               const statusStr = weather.status || "Partly Sunny";
               const humidityVal = weather.humidity || "65%";
               const windVal = weather.wind || "12 km/h";
-              const precipVal = "2 mm";
+              const precipVal = typeof weather.precipMm === "number"
+                ? `${weather.precipMm.toFixed(1).replace(/\.0$/, "")} mm`
+                : "-";
 
               return (
                 <div style={{
@@ -5006,13 +5010,14 @@ export default function Island() {
 
                     {/* Bottom Row: 3-Day Forecast Glass Cards */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, width: '100%' }}>
-                      {[
-                        { day: 'Today', icon: 'Partly Sunny', hi: `${tempVal}°`, lo: `${tempVal - 6}°`, rain: '5%' },
-                        { day: 'Tomorrow', icon: 'Partly Cloudy', hi: `${tempVal - 2}°`, lo: `${tempVal - 8}°`, rain: '15%' },
-                        { day: 'Wed', icon: 'Rain', hi: `${tempVal - 4}°`, lo: `${tempVal - 9}°`, rain: '80%' }
-                      ].map((fc) => (
+                      {(Array.isArray(weather.daily) && weather.daily.length
+                        ? weather.daily.slice(0, 3)
+                        : [
+                            { label: 'Hari ini', date: '-', hi: tempVal, lo: tempVal, desc: 'Data harian tidak tersedia' },
+                          ]
+                      ).map((fc) => (
                         <motion.div
-                          key={fc.day}
+                          key={fc.label + fc.date}
                           whileHover={{ y: -2, scale: 1.02 }}
                           style={{
                             background: 'rgba(255, 255, 255, 0.08)',
@@ -5025,10 +5030,15 @@ export default function Island() {
                             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
                           }}
                         >
-                          <span style={{ fontSize: 9.5, fontWeight: 600, color: 'rgba(255, 255, 255, 0.75)' }}>{fc.day}</span>
-                          <Animated3DWeatherIcon status={fc.icon} size={16} />
-                          <span style={{ fontSize: 10.5, fontWeight: 800, color: '#ffffff' }}>{fc.hi}</span>
-                          <span style={{ fontSize: 9, fontWeight: 600, color: '#4fc3f7' }}>{fc.rain}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.15 }}>
+                            <span style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>{fc.label}</span>
+                            <span style={{ fontSize: 8, fontWeight: 600, color: 'rgba(255, 255, 255, 0.45)' }}>{fc.date}</span>
+                          </div>
+                          <Animated3DWeatherIcon status={fc.desc} size={16} />
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.15 }}>
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#ffffff' }}>{fc.hi}°</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>{fc.lo}°</span>
+                          </div>
                         </motion.div>
                       ))}
                     </div>

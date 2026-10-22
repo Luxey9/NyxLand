@@ -86,7 +86,35 @@ i.handle("wx:bmkg",async(e,lat,lon)=>{
       if(dd<bd){bd=dd;pick=s}
     }
     const L=d.lokasi||d.data[0].lokasi||{};
-    return {ok:true,source:"bmkg",adm4:r.adm4,tempC:pick.t,humidity:pick.hu,windKmh:pick.ws,windDir:pick.wd,desc:pick.weather_desc,descEn:pick.weather_desc_en,at:pick.datetime,area:[L.desa||r.desa,L.kotkab||r.kotkab].filter(Boolean).join(", ")};
+    const TZ_MS=7*3600*1000;
+    const dayKey=t=>{const d=new Date((isNaN(t)?0:t)+TZ_MS);return d.toISOString().slice(0,10)};
+    const todayKey=dayKey(now);
+    const agg={};
+    for(const s of slots){
+      const t=Date.parse(s.datetime||"");
+      if(isNaN(t)||typeof s.t!=="number")continue;
+      const k=dayKey(t);
+      if(!agg[k])agg[k]={min:s.t,max:s.t,noon:null,noonDist:Infinity,desc:""};
+      const a=agg[k];
+      if(s.t<a.min)a.min=s.t;
+      if(s.t>a.max)a.max=s.t;
+      const h=new Date(t+TZ_MS).getUTCHours();
+      const hd=Math.abs(h-13);
+      if(hd<a.noonDist){a.noonDist=hd;a.noon=s;a.desc=s.weather_desc||""}
+    }
+    const days=Object.keys(agg).sort();
+    const DAYS=["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+    const MO=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    const daily=days.filter(k=>k>todayKey).slice(0,3).map(k=>{
+      const a=agg[k];const d=new Date(k+"T00:00:00Z");
+      return {label:DAYS[d.getUTCDay()],date:d.getUTCDate()+" "+MO[d.getUTCMonth()],lo:Math.round(a.min),hi:Math.round(a.max),desc:a.desc||""};
+    });
+    let precip=null;
+    for(const g of d.data[0].cuaca)for(const s of g){
+      const t=Date.parse(s.datetime||"");
+      if(!isNaN(t)&&Math.abs(t-now)<90*60000&&typeof s.tp==="number")precip=s.tp;
+    }
+    return {ok:true,source:"bmkg",adm4:r.adm4,tempC:pick.t,humidity:pick.hu,windKmh:pick.ws,windDir:pick.wd,desc:pick.weather_desc,descEn:pick.weather_desc_en,at:pick.datetime,precipMm:precip,daily:daily,area:[L.desa||r.desa,L.kotkab||r.kotkab].filter(Boolean).join(", ")};
   }catch(x){return {ok:false,error:String(x&&x.message||x)}}
 });
 const __WMO={0:"Cerah",1:"Cerah Berawan",2:"Berawan",3:"Mendung",45:"Kabut",48:"Kabut Beku",51:"Gerimis Ringan",53:"Gerimis",55:"Gerimis Lebat",56:"Gerimis Beku",57:"Gerimis Beku Lebat",61:"Hujan Ringan",63:"Hujan",65:"Hujan Lebat",66:"Hujan Beku",67:"Hujan Beku Lebat",71:"Salju Ringan",73:"Salju",75:"Salju Lebat",77:"Butir Salju",80:"Hujan Lokal Ringan",81:"Hujan Lokal",82:"Hujan Lokal Lebat",85:"Hujan Salju Ringan",86:"Hujan Salju Lebat",95:"Badai Petir",96:"Badai Petir Hujan Es",99:"Badai Petir Hujan Es Lebat"};
@@ -99,10 +127,19 @@ i.handle("wx:meteo",async(e,lat,lon,city)=>{
       if(!g||!g.results||!g.results.length)return {ok:false,error:"kota tidak ditemukan"};
       la=g.results[0].latitude;lo=g.results[0].longitude;
     }
-    const m=await __wxGet(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`,15);
+    const m=await __wxGet(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=4&timezone=auto`,15);
     if(!m||!m.current)return {ok:false,error:"open-meteo tidak merespons"};
     const c=m.current;
-    return {ok:true,source:"open-meteo",tempC:c.temperature_2m,humidity:c.relative_humidity_2m,windKmh:c.wind_speed_10m,desc:__WMO[c.weather_code]||("Kode "+c.weather_code),at:c.time,area:city||""};
+    const DL=["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+    const DM=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    let daily=[];
+    if(m.daily&&m.daily.time){
+      daily=m.daily.time.slice(1,4).map((k,i)=>{
+        const idx=i+1;const d=new Date(k+"T00:00:00Z");
+        return {label:DL[d.getUTCDay()],date:d.getUTCDate()+" "+DM[d.getUTCMonth()],lo:Math.round(m.daily.temperature_2m_min[idx]),hi:Math.round(m.daily.temperature_2m_max[idx]),desc:__WMO[m.daily.weather_code[idx]]||""};
+      });
+    }
+    return {ok:true,source:"open-meteo",tempC:c.temperature_2m,humidity:c.relative_humidity_2m,windKmh:c.wind_speed_10m,desc:__WMO[c.weather_code]||("Kode "+c.weather_code),at:c.time,precipMm:typeof c.precipitation==="number"?c.precipitation:null,daily:daily,area:city||""};
   }catch(x){return {ok:false,error:String(x&&x.message||x)}}
 });
 i.handle("geo:locate",async()=>{
