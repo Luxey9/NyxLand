@@ -13,8 +13,8 @@
   "platforms": {
     "win32-x64": {
       "url": "https://github.com/Luxey9/NyxLand/releases/download/v1.0.2/NyxLand-Setup-1.0.2.exe",
-      "sha256": "47f97ffdf122f69f0fca68381d8ded515ad08197ea9ca6813ba4eaed5bd32e26",
-      "size": 119788345,
+      "sha256": "eff0720f501de441dd28a1088603d4948d91e4a11a3a821a4344069913918914",
+      "size": 119788392,
       "installerType": "nsis"
     }
   }

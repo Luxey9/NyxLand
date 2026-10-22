@@ -1,7 +1,7 @@
 {
   "name": "nyxland",
   "productName": "NyxLand",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Dynamic Island untuk Windows — dengan AI Assistant, reminder, audio mixer, dan background image.",
   "main": ".vite/build/main.js",
   "author": {
